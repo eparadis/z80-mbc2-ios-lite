@@ -1440,13 +1440,16 @@ void setup()
 
   // Initialize CLK @ 4/8MHz. Z80 clock_freq = (Atmega_clock) / ((OCR2 + 1) * 2)
   ASSR &= ~(1 << AS2);                            // Set Timer2 clock from system clock
-  TCCR2 |= (1 << CS20);                           // Set Timer2 clock to "no prescaling"
-  TCCR2 &= ~((1 << CS21) | (1 << CS22));
-  TCCR2 |= (1 << WGM21);                          // Set Timer2 CTC mode
-  TCCR2 &= ~(1 << WGM20);
-  TCCR2 |= (1 <<  COM20);                         // Set "toggle OC2 on compare match"
-  TCCR2 &= ~(1 << COM21);
-  OCR2 = clockMode;                               // Set the compare value to toggle OC2 (0 = 8MHz or 1 = 4MHz)
+  
+  TCCR2B |= (1 << CS20);                     // set CS20          // Set Timer2 clock to "no prescaling"
+  TCCR2B &= ~((1 << CS21) | (1 << CS22));    // clr CS21 and CS22
+  TCCR2A |= (1 << WGM21);                    // set WGM21         // Set Timer2 CTC mode
+  TCCR2A &= ~(1 << WGM20);                   // clr WGM20
+  TCCR2B &= ~(1 << WGM22);                   // clr WGM22
+  TCCR2A |= (1 <<  COM2A0);                  // set COM2A0        // Set "toggle OC2 on compare match"
+  TCCR2A &= ~(1 << COM2A1);                  // clr COM2A1
+  OCR2A = clockMode;                         // Set the compare value to toggle OC2 (0 = 8MHz or 1 = 4MHz)
+  
   pinMode(CLK, OUTPUT);                           // Set OC2 as output and start to output the clock @ 4Mhz
   Serial.println("IOS: Z80 is running from now");
   Serial.println();
