@@ -1171,6 +1171,8 @@ const byte * const bootPh2Table[3] PROGMEM = {boot_A_, boot_B_, boot_C_}; // Pay
 const byte  bootModeAddr  = 10;          // Internal EEPROM address for boot mode storage
 const byte  autoexecFlagAddr = 12;       // Internal EEPROM address for AUTOEXEC flag storage
 const byte  clockModeAddr = 13;          // Internal EEPROM address for the Z80 clock 4/8 MHz switch
+const word  nvStorageAddr = 0x0100;      // Internal EEPROM address for non-volatile storage (256 bytes total)
+byte  nvOffset = 0;                // current offset from nvStorageAddr to read from or write to.
 
 // ------------------------------------------------------------------------------
 //
@@ -1508,6 +1510,8 @@ void loop()
       // Opcode 0x06  IODIRB Write    1
       // Opcode 0x07  GPPUA Write     1
       // Opcode 0x08  GPPUB Write     1
+      // Opcode 0x09  set EEPROM cursor         1
+      // Opcode 0x0A  write EEPROM at cursor    1
       // Opcode 0xFF  No operation    1
       //
       //
@@ -1520,6 +1524,7 @@ void loop()
       // Opcode 0x82  GPIOB Read      1
       // Opcode 0x83  SYSFLAGS        1
       // Opcode 0x84  DATETIME        7
+      // Opcode 0x85  read EEPROM at cursor  1
       // Opcode 0xFF  No operation    1
       //
       // See the following lines for the Opcodes details.
@@ -1657,6 +1662,14 @@ void loop()
             Wire.endTransmission();
           }
         break;
+
+        case 0x09:
+          // set EEPROM R/W cursor (Atmega internal EEPROM)
+          nvOffset = ioData;
+        break;
+        case 0x0A:
+          // write a byte to EEPROM at current EEPROM cursor location
+          EEPROM.update(nvStorageAddr + (nvOffset & 0xFF), ioData);
         }
         ioOpcode = 0xFF;                // All done. Set ioOpcode = "No operation"
       }
@@ -1830,6 +1843,11 @@ void loop()
                else ioOpcode = 0xFF;              // All done. Set ioOpcode = "No operation"
             }
             else ioOpcode = 0xFF;                 // Nothing to do. Set ioOpcode = "No operation"
+          break;
+          case 0x85:
+            // read EEPROM at cursor (Atmega internal EEPROM)
+            ioData = EEPROM.read(nvStorageAddr + (nvOffset & 0xFF));
+            ioOpcode = 0xFF;              // All done. Set ioOpcode = "No operation"
           break;
           }
         }
@@ -2340,5 +2358,3 @@ void singlePulsesResetZ80()
   digitalWrite(RESET_, HIGH);         // Set RESET_ not active
   pulseClock(2);                      // Needed two more clock pulses after RESET_ goes HIGH
 }
-
-
