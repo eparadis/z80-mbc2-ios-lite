@@ -34,35 +34,40 @@
 
 void setup()
 {
-
-  // ------------------------------------------------------------------------------
-  //
-  //  Local variables
-  //
-  // ------------------------------------------------------------------------------
-
   byte          data;                       // External RAM data byte
   word          address;                    // External RAM current address;
-  char          minBootChar   = '1';        // Minimum allowed ASCII value selection (boot selection)
-  char          maxSelChar    = '4';        // Maximum allowed ASCII value selection (boot selection)
-  byte          maxBootMode   = 2;          // Default maximum allowed value for bootMode [0..2]
   byte          bootSelection = 0;          // Flag to enter into the boot mode selection
 
-  // ------------------------------------------------------------------------------
+  // Check USER Key for boot mode changes
+  pinMode(USER, INPUT_PULLUP);                    // Read USER Key to enter into the boot mode selection
+  if (!digitalRead(USER)) bootSelection = 1;
 
-  // ----------------------------------------
-  // INITIALITATION
-  // ----------------------------------------
+  initializePins();
+  clockMode = lookupClockMode();
+  searchForI2CDevices();
+  printBootMessageHeader();
+  reportDiscoveredI2CDevices();
+  bootMenu(bootSelection);
+  bootZ80();
+}
 
+void loop()
+{
+  if (!digitalRead(WAIT_))     // I/O operaton requested
+  {
+    if (!digitalRead(WR_))
+      writeOperation();
+    else
+      readOperation();
+  }
+}
+
+void initializePins() {
   // Initialize RESET_ and WAIT_RES_
   pinMode(RESET_, OUTPUT);                        // Configure RESET_ and set it ACTIVE
   digitalWrite(RESET_, LOW);
   pinMode(WAIT_RES_, OUTPUT);                     // Configure WAIT_RES_ and set it ACTIVE to reset the WAIT FF (U1C)
   digitalWrite(WAIT_RES_, LOW);
-
-  // Check USER Key for boot mode changes
-  pinMode(USER, INPUT_PULLUP);                    // Read USER Key to enter into the boot mode selection
-  if (!digitalRead(USER)) bootSelection = 1;
 
   // Initialize USER,  INT_, RAM_CE2, and BUSREQ_
   pinMode(USER, OUTPUT);                          // USER led OFF
@@ -105,20 +110,19 @@ void setup()
   // Initialize (park) MCU_RTS and MCU_CTS
   pinMode(MCU_RTS_, INPUT_PULLUP);                // Parked (not used)
   pinMode(MCU_CTS_, INPUT_PULLUP);
+}
 
+byte lookupClockMode() {
   // Read the Z80 CPU speed mode
   if (EEPROM.read(clockModeAddr) > 1)             // Check if it is a valid value, otherwise set it to 4MHz mode
     // Not a valid value. Set it to 4MHz.
   {
     EEPROM.write(clockModeAddr, 1);
   }
-  clockMode = EEPROM.read(clockModeAddr);         // Read the previous stored value
+  return EEPROM.read(clockModeAddr);         // Read the previous stored value
+}
 
-  // Initialize the EXP_PORT (I2C) and search for "known" optional modules
-  Wire.begin();                                   // Wake up I2C bus
-  Wire.beginTransmission(GPIOEXP_ADDR);
-  if (Wire.endTransmission() == 0) moduleGPIO = 1;// Set to 1 if GPIO Module is found
-
+void printBootMessageHeader() {
   // Print some system information
   Serial.begin(9600);
   Serial.println();
@@ -130,16 +134,32 @@ void setup()
   Serial.print("IOS: Z80 clock set at ");
   Serial.print(8 - (clockMode * 4));
   Serial.println("MHz");
+}
 
+void searchForI2CDevices() {
+  // Initialize the EXP_PORT (I2C) and search for "known" optional modules
+  Wire.begin();                                   // Wake up I2C bus
+  Wire.beginTransmission(GPIOEXP_ADDR);
+  if (Wire.endTransmission() == 0) moduleGPIO = 1;// Set to 1 if GPIO Module is found
+}
+
+void reportDiscoveredI2CDevices() {
   // Print RTC and GPIO informations if found
   foundRTC = autoSetRTC();                        // Check if RTC is present and initialize it as needed
   if (moduleGPIO) Serial.println("IOS: Found GPE Option");
+}
 
+void bootMenu(byte bootSelection) {
+
+  char          minBootChar   = '1';        // Minimum allowed ASCII value selection (boot selection)
+  char          maxSelChar    = '4';        // Maximum allowed ASCII value selection (boot selection)
+  byte          maxBootMode   = 2;          // Default maximum allowed value for bootMode [0..2]
   // ----------------------------------------
   // BOOT SELECTION AND SYS PARAMETERS MENU
   // ----------------------------------------
 
   // Boot selection and system parameters menu if requested
+
   bootMode = EEPROM.read(bootModeAddr);           // Read the previous stored boot mode
   if ((bootSelection == 1 ) || (bootMode > maxBootMode))
     // Enter in the boot selection menu if USER key was pressed at startup
@@ -196,8 +216,10 @@ void setup()
     if (bootMode < 3) EEPROM.write(bootModeAddr, bootMode); // Save to the internal EEPROM if required
     else bootMode = EEPROM.read(bootModeAddr);    // Reload boot mode if '0' or > '3' choice selected
   }
+}
 
-  // ----------------------------------------
+void bootZ80() {
+    // ----------------------------------------
   // Z80 PROGRAM BOOT
   // ----------------------------------------
 
@@ -291,19 +313,3 @@ void setup()
   digitalWrite(RESET_, HIGH);                     // Release Z80 from reset and let it run
 }
 
-void loop()
-{
-  if (!digitalRead(WAIT_))     // I/O operaton requested
-  {
-    if (!digitalRead(WR_))
-      writeOperation();
-    else
-      readOperation();
-  }
-}
-
-void serialEvent()
-// Set INT_ to ACTIVE if there are received chars from serial to read and if the interrupt generation is enabled
-{
-  if ((Serial.available()) && Z80IntEnFlag) digitalWrite(INT_, LOW);
-}
