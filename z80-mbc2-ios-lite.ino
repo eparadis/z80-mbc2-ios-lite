@@ -1,3 +1,6 @@
+#include "pins.h"
+#include "boot.h"
+
 /* ------------------------------------------------------------------------------
 
 S220618 - HW ref: A040618
@@ -32,44 +35,7 @@ S220618           First release.
 
 --------------------------------------------------------------------------------- */
 
-// ------------------------------------------------------------------------------
-//
-// Hardware definitions for A040618 (Z80-MBC2) - Base system
-//
-// ------------------------------------------------------------------------------
 
-#define   D0          24  // PA0 pin 40   Z80 data bus
-#define   D1          25  // PA1 pin 39
-#define   D2          26  // PA2 pin 38
-#define   D3          27  // PA3 pin 37
-#define   D4          28  // PA4 pin 36
-#define   D5          29  // PA5 pin 35
-#define   D6          30  // PA6 pin 34
-#define   D7          31  // PA7 pin 33
-
-#define   AD0         18  // PC2 pin 24   Z80 A0
-#define   WR_         19  // PC3 pin 25   Z80 WR
-#define   RD_         20  // PC4 pin 26   Z80 RD
-#define   MREQ_       21  // PC5 pin 27   Z80 MREQ
-#define   RESET_      22  // PC6 pin 28   Z80 RESET
-#define   MCU_RTS_    23  // PC7 pin 29   * RESERVED - NOT USED *
-#define   MCU_CTS_    10  // PD2 pin 16   * RESERVED - NOT USED *
-#define   BANK1       11  // PD3 pin 17   RAM Memory bank address (High)
-#define   BANK0       12  // PD4 pin 18   RAM Memory bank address (Low)
-#define   INT_         1  // PB1 pin 2    Z80 control bus
-#define   RAM_CE2      2  // PB2 pin 3    RAM Chip Enable (CE2). Active HIGH. Used only during boot
-#define   WAIT_        3  // PB3 pin 4    Z80 WAIT
-#define   SS_          4  // PB4 pin 5    SD SPI * RESERVED - NOT USED *
-#define   MOSI         5  // PB5 pin 6    SD SPI * RESERVED - NOT USED *
-#define   MISO         6  // PB6 pin 7    SD SPI * RESERVED - NOT USED *
-#define   SCK          7  // PB7 pin 8    SD SPI * RESERVED - NOT USED *
-#define   BUSREQ_     14  // PD6 pin 20   Z80 BUSRQ
-#define   CLK         15  // PD7 pin 21   Z80 CLK
-#define   SCL_PC0     16  // PC0 pin 22   IOEXP connector (I2C)
-#define   SDA_PC1     17  // PC1 pin 23   IOEXP connector (I2C)
-#define   LED_IOS      0  // PB0 pin 1    Led LED_IOS is ON if HIGH
-#define   WAIT_RES_    0  // PB0 pin 1    Reset the Wait FF
-#define   USER        13  // PD5 pin 19   Led USER and key (led USER is ON if LOW)
 
 // ------------------------------------------------------------------------------
 //
@@ -111,10 +77,7 @@ S220618           First release.
 //
 // ------------------------------------------------------------------------------
 
-const byte    LD_HL        =  0x36;     // Opcode of the Z80 instruction: LD(HL), n
-const byte    INC_HL       =  0x23;     // Opcode of the Z80 instruction: INC HL
-const byte    LD_HLnn      =  0x21;     // Opcode of the Z80 instruction: LD HL, nn
-const byte    JP_nn        =  0xC3;     // Opcode of the Z80 instruction: JP nn
+
 const String  compTimeStr   = __TIME__;  // Compile timestamp string
 const String  compDateStr   = __DATE__;  // Compile datestamp string
 const byte    daysOfMonth[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
@@ -151,7 +114,7 @@ word          BootStrAddr;                // Starting address of the selected pa
 byte          Z80IntEnFlag   = 0;         // Z80 INT_ enable flag (0 = No INT_ used, 1 = INT_ used for I/O)
 unsigned long timeStamp;                  // Timestamp for led blinking
 char          inChar;                     // Input char from serial
-byte          iCount;                     // Temporary variable
+//byte          iCount;                     // Temporary variable
 byte          clockMode;                  // Z80 clock HI/LO speed selector (0 = 4MHz, 1 = 8MHz)
 
 // DS3231 RTC variables
@@ -1213,104 +1176,3 @@ void ChangeRTC()
   Serial.println(")");
 }
 
-
-// ------------------------------------------------------------------------------
-
-// Z80 boot routines
-
-// ------------------------------------------------------------------------------
-
-
-void pulseClock(byte numPulse)
-// Generate <numPulse> clock pulses on the Z80 clock pin.
-// The steady clock level is LOW, e.g. one clock pulse is a 0-1-0 transition
-{
-  for (iCount = 0; iCount < numPulse; iCount++)
-  // Generate one clock pulse
-  {
-    // Send one impulse (0-1-0) on the CLK output
-    digitalWrite(CLK, HIGH);
-    digitalWrite(CLK, LOW);
-  }
-}
-
-// ------------------------------------------------------------------------------
-
-void loadByteToRAM(byte value)
-// Load a given byte to RAM using a sequence of two Z80 instructions forced on the data bus.
-// The RAM_CE2 signal is used to force the RAM in HiZ, so the Atmega can write the needed instruction/data
-// on the data bus. Controlling the clock signal and knowing exactly how many clocks pulse are required it is possible control the
-// whole loading process.
-// In the following "T" are the T-cycles of the Z80 (See the Z80 datashet).
-// The two instruction are "LD (HL), n" and "INC (HL)".
-{
-  // Execute the LD(HL),n instruction (T = 4+3+3). See the Z80 datasheet and manual.
-  // After the execution of this instruction the <value> byte is loaded in the memory address pointed by HL.
-  pulseClock(1);                      // Execute the T1 cycle of M1 (Opcode Fetch machine cycle)
-  digitalWrite(RAM_CE2, LOW);         // Force the RAM in HiZ (CE2 = LOW)
-  DDRA = 0xFF;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as output
-  PORTA = LD_HL;                      // Write "LD (HL), n" opcode on data bus
-  pulseClock(2);                      // Execute T2 and T3 cycles of M1
-  DDRA = 0x00;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as input... 
-  PORTA = 0xFF;                       // ...with pull-up
-  pulseClock(2);                      // Complete the execution of M1 and execute the T1 cycle of the following 
-                                      // Memory Read machine cycle
-  DDRA = 0xFF;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as output
-  PORTA = value;                      // Write the byte to load in RAM on data bus
-  pulseClock(2);                      // Execute the T2 and T3 cycles of the Memory Read machine cycle
-  DDRA = 0x00;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as input... 
-  PORTA = 0xFF;                       // ...with pull-up
-  digitalWrite(RAM_CE2, HIGH);        // Enable the RAM again (CE2 = HIGH)
-  pulseClock(3);                      // Execute all the following Memory Write machine cycle
-
-  // Execute the INC(HL) instruction (T = 6). See the Z80 datasheet and manual.
-  // After the execution of this instruction HL points to the next memory address.
-  pulseClock(1);                      // Execute the T1 cycle of M1 (Opcode Fetch machine cycle)
-  digitalWrite(RAM_CE2, LOW);         // Force the RAM in HiZ (CE2 = LOW)
-  DDRA = 0xFF;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as output
-  PORTA = INC_HL;                     // Write "INC(HL)" opcode on data bus
-  pulseClock(2);                      // Execute T2 and T3 cycles of M1
-  DDRA = 0x00;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as input... 
-  PORTA = 0xFF;                       // ...with pull-up
-  digitalWrite(RAM_CE2, HIGH);        // Enable the RAM again (CE2 = HIGH)
-  pulseClock(3);                      // Execute all the remaining T cycles
-}
-
-// ------------------------------------------------------------------------------
-
-void loadHL(word value)
-// Load "value" word into the HL registers inside the Z80 CPU, using the "LD HL,nn" instruction.
-// In the following "T" are the T-cycles of the Z80 (See the Z80 datashet).
-{
-  // Execute the LD dd,nn instruction (T = 4+3+3), with dd = HL and nn = value. See the Z80 datasheet and manual.
-  // After the execution of this instruction the word "value" (16bit) is loaded into HL.
-  pulseClock(1);                      // Execute the T1 cycle of M1 (Opcode Fetch machine cycle)
-  digitalWrite(RAM_CE2, LOW);         // Force the RAM in HiZ (CE2 = LOW)
-  DDRA = 0xFF;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as output
-  PORTA = LD_HLnn;                    // Write "LD HL, n" opcode on data bus
-  pulseClock(2);                      // Execute T2 and T3 cycles of M1
-  DDRA = 0x00;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as input... 
-  PORTA = 0xFF;                       // ...with pull-up
-  pulseClock(2);                      // Complete the execution of M1 and execute the T1 cycle of the following 
-                                      // Memory Read machine cycle
-  DDRA = 0xFF;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as output
-  PORTA = lowByte(value);             // Write first byte of "value" to load in HL
-  pulseClock(3);                      // Execute the T2 and T3 cycles of the first Memory Read machine cycle
-                                      // and T1, of the second Memory Read machine cycle
-  PORTA = highByte(value);            // Write second byte of "value" to load in HL
-  pulseClock(2);                      // Execute the T2 and T3 cycles of the second Memory Read machine cycle
-  DDRA = 0x00;                        // Configure Z80 data bus D0-D7 (PA0-PA7) as input... 
-  PORTA = 0xFF;                       // ...with pull-up
-  digitalWrite(RAM_CE2, HIGH);        // Enable the RAM again (CE2 = HIGH)
-}
-
-// ------------------------------------------------------------------------------
-
-void singlePulsesResetZ80()
-// Reset the Z80 CPU using single pulses clock
-{
-  digitalWrite(RESET_, LOW);          // Set RESET_ active
-  pulseClock(6);                      // Generate twice the needed clock pulses to reset the Z80
-  digitalWrite(RESET_, HIGH);         // Set RESET_ not active
-  pulseClock(2);                      // Needed two more clock pulses after RESET_ goes HIGH
-}
