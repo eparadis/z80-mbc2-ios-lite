@@ -1,7 +1,5 @@
 #include "pins.h"
 
-byte          iCount;                     // Temporary variable
-
 const byte    LD_HL        =  0x36;     // Opcode of the Z80 instruction: LD(HL), n
 const byte    INC_HL       =  0x23;     // Opcode of the Z80 instruction: INC HL
 const byte    LD_HLnn      =  0x21;     // Opcode of the Z80 instruction: LD HL, nn
