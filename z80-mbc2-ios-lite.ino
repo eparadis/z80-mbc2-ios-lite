@@ -34,20 +34,13 @@
 
 void setup()
 {
-  byte          data;                       // External RAM data byte
-  word          address;                    // External RAM current address;
-  byte          bootSelection = 0;          // Flag to enter into the boot mode selection
-
-  // Check USER Key for boot mode changes
-  pinMode(USER, INPUT_PULLUP);                    // Read USER Key to enter into the boot mode selection
-  if (!digitalRead(USER)) bootSelection = 1;
-
+  byte enterBootMenu = checkUserKey();
   initializePins();
   clockMode = lookupClockMode();
   searchForI2CDevices();
   printBootMessageHeader();
   reportDiscoveredI2CDevices();
-  bootMenu(bootSelection);
+  bootMenu(enterBootMenu);
   bootZ80();
 }
 
@@ -60,6 +53,15 @@ void loop()
     else
       readOperation();
   }
+}
+
+byte checkUserKey() {
+  // Check USER Key for boot mode changes
+  pinMode(USER, INPUT_PULLUP);                    // Read USER Key to enter into the boot mode selection
+  if (!digitalRead(USER))
+    return 1;
+  else
+    return 0;
 }
 
 void initializePins() {
