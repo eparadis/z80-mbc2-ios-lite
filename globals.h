@@ -56,3 +56,18 @@ void blinkIOSled(unsigned long *timestamp)
     *timestamp = millis();
   }
 }
+
+
+// ------------------------------------------------------------------------------
+//
+// Hardware definitions for A040618 GPE Option (Optional GPIO Expander)
+//
+// ------------------------------------------------------------------------------
+
+#define   GPIOEXP_ADDR  0x20  // I2C module address (see datasheet)
+#define   IODIRA_REG    0x00  // MCP23017 internal register IODIRA  (see datasheet)
+#define   IODIRB_REG    0x01  // MCP23017 internal register IODIRB  (see datasheet)
+#define   GPPUA_REG     0x0C  // MCP23017 internal register GPPUA  (see datasheet)
+#define   GPPUB_REG     0x0D  // MCP23017 internal register GPPUB  (see datasheet)
+#define   GPIOA_REG     0x12  // MCP23017 internal register GPIOA  (see datasheet)
+#define   GPIOB_REG     0x13  // MCP23017 internal register GPIOB  (see datasheet)
