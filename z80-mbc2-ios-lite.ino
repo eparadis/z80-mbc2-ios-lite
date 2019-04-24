@@ -9,13 +9,11 @@
 #include "Wire.h"                         // Needed for I2C bus
 #include <EEPROM.h>                       // Needed for internal EEPROM R/W
 
-/* ------------------------------------------------------------------------------
-
+/*
   S220618 - HW ref: A040618
 
   IOS-LITE - I/O Subsystem for Z80-MBC2 (Multi Boot Computer) - LITE Edition (No SD disk support)
   (Z80 128kB RAM @ 4/8Mhz)
-
 
   Notes:
 
@@ -30,20 +28,9 @@
 
   4:  Utilities:   S111216 TASM conversion utility
 
-
-  --------------------------------------------------------------------------------- */
-
-/* ------------------------------------------------------------------------------
-
   CHANGELOG:
-
-
   S220618           First release.
-
-
-  --------------------------------------------------------------------------------- */
-
-// ------------------------------------------------------------------------------
+*/
 
 void setup()
 {
@@ -304,8 +291,6 @@ void setup()
   digitalWrite(RESET_, HIGH);                     // Release Z80 from reset and let it run
 }
 
-// ------------------------------------------------------------------------------
-
 void loop()
 {
   if (!digitalRead(WAIT_))     // I/O operaton requested
@@ -316,21 +301,6 @@ void loop()
       readOperation();
   }
 }
-
-// ------------------------------------------------------------------------------
-// Generic routines
-
-// ------------------------------------------------------------------------------
-
-//void printBinaryByte(byte value)
-//{
-//  for (byte mask = 0x80; mask; mask >>= 1)
-//  {
-//    Serial.print((mask & value) ? '1' : '0');
-//  }
-//}
-
-// ------------------------------------------------------------------------------
 
 void serialEvent()
 // Set INT_ to ACTIVE if there are received chars from serial to read and if the interrupt generation is enabled
