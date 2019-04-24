@@ -153,8 +153,8 @@ void reportDiscoveredI2CDevices() {
 void bootMenu(byte bootSelection) {
 
   char          minBootChar   = '1';        // Minimum allowed ASCII value selection (boot selection)
-  char          maxSelChar    = '4';        // Maximum allowed ASCII value selection (boot selection)
-  byte          maxBootMode   = 2;          // Default maximum allowed value for bootMode [0..2]
+  char          maxSelChar    = '5';        // Maximum allowed ASCII value selection (boot selection)
+  byte          maxBootMode   = 3;          // Default maximum allowed value for bootMode [0..3]
   // ----------------------------------------
   // BOOT SELECTION AND SYS PARAMETERS MENU
   // ----------------------------------------
@@ -184,12 +184,13 @@ void bootMenu(byte bootSelection) {
     Serial.println(" 1: Basic");
     Serial.println(" 2: Forth");
     Serial.println(" 3: iLoad");
-    Serial.println(" 4: Change Z80 clock speed (4/8MHz)");
+    Serial.println(" 4: EEPROM scratchpad");
+    Serial.println(" 5: Change Z80 clock speed (4/8MHz)");
     if (foundRTC)
       // RTC module is present, so add a choice
     {
-      Serial.println(" 5: Change RTC time/date");
-      maxSelChar = '5';
+      Serial.println(" 6: Change RTC time/date");
+      maxSelChar = '6';
     }
 
     // Ask a choice
@@ -206,21 +207,21 @@ void bootMenu(byte bootSelection) {
     Serial.println("  Ok");
 
     // Make the selected action
-    if (inChar == '4')
+    if (inChar == '5')
       // Change the clock speed of the Z80 CPU
     {
       clockMode = !clockMode;                     // Toggle speed mode (4/8MHz)
       EEPROM.write(clockModeAddr, clockMode);     // Save it to the internal EEPROM
     }
-    if (inChar == '5') ChangeRTC();               // Change RTC Date/Time
+    if (inChar == '6') ChangeRTC();               // Change RTC Date/Time
     bootMode = inChar - '1';                      // Calculate bootMode from inChar
-    if (bootMode < 3) EEPROM.write(bootModeAddr, bootMode); // Save to the internal EEPROM if required
-    else bootMode = EEPROM.read(bootModeAddr);    // Reload boot mode if '0' or > '3' choice selected
+    if (bootMode < 4) EEPROM.write(bootModeAddr, bootMode); // Save to the internal EEPROM if required
+    else bootMode = EEPROM.read(bootModeAddr);    // Reload boot mode if '0' or > '4' choice selected
   }
 }
 
 void bootZ80() {
-    // ----------------------------------------
+  // ----------------------------------------
   // Z80 PROGRAM BOOT
   // ----------------------------------------
 
@@ -242,6 +243,11 @@ void bootZ80() {
       BootImage = (byte *) pgm_read_word (&bootPh2Table[1]);
       BootImageSize = sizeof(boot_B_);
       BootStrAddr = boot_B_StrAddr;
+      break;
+    case 3:                                       // EEPROM scratchpad boot
+      // we can't just set BootImage because its expecting a region in PROGMEM
+      BootImageSize = 0xFF;
+      BootStrAddr = 0x0000;
       break;
   }
   digitalWrite(WAIT_RES_, HIGH);                // Set WAIT_RES_ HIGH (Led LED_0 ON)
@@ -282,7 +288,10 @@ void bootZ80() {
   for (word i = 0; i < BootImageSize; i++)
     // Write boot program into external RAM
   {
-    loadByteToRAM(pgm_read_byte(BootImage + i));  // Write current data byte into RAM
+    if( bootMode != 3) 
+      loadByteToRAM(pgm_read_byte(BootImage + i));  // Write current data byte into RAM
+    else
+      loadByteToRAM(EEPROM.read(nvStorageAddr + i));
   }
   Serial.println(" Done");
   digitalWrite(RESET_, LOW);                      // Activate the RESET_ signal
