@@ -114,12 +114,13 @@ void initializePins() {
 
 byte lookupClockMode() {
   // Read the Z80 CPU speed mode
-  if (EEPROM.read(clockModeAddr) > 1)             // Check if it is a valid value, otherwise set it to 4MHz mode
-    // Not a valid value. Set it to 4MHz.
+  byte orig = EEPROM.read(clockModeAddr);
+  if (orig > 1)             // Check if it is a valid value, otherwise set it to 4MHz mode
   {
     EEPROM.write(clockModeAddr, 1);
+    return 1;
   }
-  return EEPROM.read(clockModeAddr);         // Read the previous stored value
+  return orig;         // Read the previous stored value
 }
 
 void printBootMessageHeader() {
