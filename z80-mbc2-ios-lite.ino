@@ -8,7 +8,9 @@ IOS-LITE - I/O Subsystem for Z80-MBC2 (Multi Boot Computer) - LITE Edition (No S
 
 Notes:
 
-1:  This SW is ONLY for the Atmega32A used as EEPROM and I/O subsystem (16MHz external oscillator).
+1:  This SW is ONLY for the Atmega used as EEPROM and I/O subsystem (16MHz external oscillator).
+    It is currently targeted to the Atmega644P or similar.
+    https://github.com/MCUdude/MightyCore is required
     
 2:  Tested on Atmega32A @ Arduino IDE 1.8.5.
 
