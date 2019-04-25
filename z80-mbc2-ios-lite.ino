@@ -1,3 +1,5 @@
+#include <Arduino.h> // added for VS Code support
+
 #include "pins.h"
 #include "globals.h"
 #include "boot.h"
