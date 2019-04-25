@@ -1,4 +1,5 @@
 #include "pins.h"
+#include <EEPROM.h>
 
 const byte    LD_HL        =  0x36;     // Opcode of the Z80 instruction: LD(HL), n
 const byte    INC_HL       =  0x23;     // Opcode of the Z80 instruction: INC HL
@@ -105,3 +106,107 @@ void singlePulsesResetZ80()
   digitalWrite(RESET_, HIGH);         // Set RESET_ not active
   pulseClock(2);                      // Needed two more clock pulses after RESET_ goes HIGH
 }
+
+void bootZ80() {
+  // ----------------------------------------
+  // Z80 PROGRAM BOOT
+  // ----------------------------------------
+
+  // Get the address of the payload array in PROGMEM for the program boot and its size
+  switch (bootMode)
+  {
+    case 0:                                       // Basic boot
+      BootImage = (byte *) pgm_read_word (&bootPh2Table[0]);
+      BootImageSize = sizeof(boot_A_);
+      BootStrAddr = boot_A_StrAddr;
+      Z80IntEnFlag = 1;                           // Enable INT_ signal generation (Z80 M1 INT I/O)
+      break;
+    case 1:                                       // Forth boot
+      BootImage = (byte *) pgm_read_word (&bootPh2Table[2]);
+      BootImageSize = sizeof(boot_C_);
+      BootStrAddr = boot_C_StrAddr;
+      break;
+    case 2:                                       // iLoad boot
+      BootImage = (byte *) pgm_read_word (&bootPh2Table[1]);
+      BootImageSize = sizeof(boot_B_);
+      BootStrAddr = boot_B_StrAddr;
+      break;
+    case 3:                                       // EEPROM scratchpad boot
+      // we can't just set BootImage because its expecting a region in PROGMEM
+      BootImageSize = 0xFF;
+      BootStrAddr = 0x0000;
+      break;
+  }
+  digitalWrite(WAIT_RES_, HIGH);                // Set WAIT_RES_ HIGH (Led LED_0 ON)
+
+  // Load a JP instruction if the boot program starting addr is > 0x0000
+  if (BootStrAddr > 0x0000)                     // Check if the boot program starting addr > 0x0000
+    // Inject a "JP <BootStrAddr>" instruction to jump at boot starting address
+  {
+    loadHL(0x0000);                             // HL = 0x0000 (used as pointer to RAM)
+    loadByteToRAM(JP_nn);                       // Write the JP opcode @ 0x0000;
+    loadByteToRAM(lowByte(BootStrAddr));        // Write LSB to jump @ 0x0001
+    loadByteToRAM(highByte(BootStrAddr));       // Write MSB to jump @ 0x0002
+    //
+    // DEBUG ----------------------------------
+    if (debug)
+    {
+      Serial.print("DEBUG: Injected JP 0x");
+      Serial.println(BootStrAddr, HEX);
+    }
+    // DEBUG END ------------------------------
+    //
+  }
+
+  // Execute the boot
+  loadHL(BootStrAddr);                           // Set Z80 HL = boot starting address (used as pointer to RAM);
+  //
+  // DEBUG ----------------------------------
+  if (debug)
+  {
+    Serial.print("DEBUG: BootImageSize = ");
+    Serial.println(BootImageSize);
+    Serial.print("DEBUG: BootStrAddr = ");
+    Serial.println(BootStrAddr, HEX);
+  }
+  // DEBUG END ------------------------------
+  //
+  Serial.print("IOS: Loading boot program...");
+  for (word i = 0; i < BootImageSize; i++)
+    // Write boot program into external RAM
+  {
+    if( bootMode != 3) 
+      loadByteToRAM(pgm_read_byte(BootImage + i));  // Write current data byte into RAM
+    else
+      loadByteToRAM(EEPROM.read(nvStorageAddr + i));
+  }
+  Serial.println(" Done");
+  digitalWrite(RESET_, LOW);                      // Activate the RESET_ signal
+
+  // Initialize CLK @ 4/8MHz. Z80 clock_freq = (Atmega_clock) / ((OCR2 + 1) * 2)
+  ASSR &= ~(1 << AS2);                            // Set Timer2 clock from system clock
+
+  TCCR2B |= (1 << CS20);                     // set CS20          // Set Timer2 clock to "no prescaling"
+  TCCR2B &= ~((1 << CS21) | (1 << CS22));    // clr CS21 and CS22
+  TCCR2A |= (1 << WGM21);                    // set WGM21         // Set Timer2 CTC mode
+  TCCR2A &= ~(1 << WGM20);                   // clr WGM20
+  TCCR2B &= ~(1 << WGM22);                   // clr WGM22
+  TCCR2A |= (1 <<  COM2A0);                  // set COM2A0        // Set "toggle OC2 on compare match"
+  TCCR2A &= ~(1 << COM2A1);                  // clr COM2A1
+  OCR2A = clockMode;                         // Set the compare value to toggle OC2 (0 = 8MHz or 1 = 4MHz)
+
+  pinMode(CLK, OUTPUT);                           // Set OC2 as output and start to output the clock @ 4Mhz
+  Serial.println("IOS: Z80 is running from now");
+  Serial.println();
+
+  // Flush input serial Rx buffer
+  while (Serial.available() > 0)
+  {
+    Serial.read();
+  }
+
+  // Leave the Z80 CPU running
+  delay(1);                                       // Just to be sure...
+  digitalWrite(RESET_, HIGH);                     // Release Z80 from reset and let it run
+}
+
