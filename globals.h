@@ -17,6 +17,8 @@ void blinkIOSled(unsigned long *timestamp);
 #define   GPIOA_REG     0x12  // MCP23017 internal register GPIOA  (see datasheet)
 #define   GPIOB_REG     0x13  // MCP23017 internal register GPIOB  (see datasheet)
 
+#define   VIDEOTERM_ADDR 0x40 // I2C address of video terminal
+
 #define bootModeAddr  10          // Internal EEPROM address for boot mode storage
 #define autoexecFlagAddr 12       // Internal EEPROM address for AUTOEXEC flag storage
 #define clockModeAddr 13          // Internal EEPROM address for the Z80 clock 4/8 MHz switch

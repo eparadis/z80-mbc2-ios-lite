@@ -94,6 +94,12 @@ void executeWriteOpcode() {
         //                             D7 D6 D5 D4 D3 D2 D1 D0    ASCII char to be sent to serial
 
         Serial.write(ioData);
+        // duplicate serial to I2C-connected video display
+        Wire.beginTransmission(VIDEOTERM_ADDR);
+        Wire.write(ioData);
+        if( Wire.endTransmission() ) {
+          Serial.print("[i2c error]");
+        }
         break;
 
       case  0x03:
