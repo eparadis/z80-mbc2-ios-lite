@@ -1,3 +1,6 @@
+#ifndef _PINS_H
+#define _PINS_H
+
 // ------------------------------------------------------------------------------
 //
 // Hardware definitions for A040618 (Z80-MBC2) - Base system
@@ -36,3 +39,5 @@
 #define   LED_IOS      0  // PB0 pin 1    Led LED_IOS is ON if HIGH
 #define   WAIT_RES_    0  // PB0 pin 1    Reset the Wait FF
 #define   USER        13  // PD5 pin 19   Led USER and key (led USER is ON if LOW)
+
+#endif

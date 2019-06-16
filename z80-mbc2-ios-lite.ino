@@ -4,10 +4,28 @@
 #include "rtc.h"
 #include "write_ops.h"
 #include "read_ops.h"
+#include "boot_payloads.h"
 
 #include <avr/pgmspace.h>                 // Needed for PROGMEM
 #include "Wire.h"                         // Needed for I2C bus
 #include <EEPROM.h>                       // Needed for internal EEPROM R/W
+
+extern unsigned long timeStamp;
+extern byte moduleGPIO;
+extern char inChar;
+extern byte foundRTC;
+
+extern byte clockMode;
+extern byte bootMode;
+
+extern byte *BootImage;
+extern word BootImageSize;
+extern const byte * const bootPh2Table[3] PROGMEM;
+extern word BootStrAddr;
+extern byte Z80IntEnFlag;
+
+const byte    JP_nn        =  0xC3;     // Opcode of the Z80 instruction: JP nn
+
 
 /*
   S220618 - HW ref: A040618
