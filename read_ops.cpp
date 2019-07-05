@@ -1,3 +1,5 @@
+#include <PS2Keyboard.h>
+
 #include <Arduino.h>
 #include <Wire.h>
 #include <EEPROM.h>
@@ -16,6 +18,7 @@ extern byte autoexecFlag;
 extern byte nvOffset;
 extern byte foundRTC;
 extern byte seconds, minutes, hours, day, month, year, tempC;
+extern PS2Keyboard keyboard;
 
 void readOperation() {
   if (!digitalRead(RD_))
@@ -49,6 +52,7 @@ void readOperation() {
       //
       ioData = 0xFF;
       if (Serial.available() > 0) ioData = Serial.read();
+      if (keyboard.available()) ioData = keyboard.read(); // for now, the keyboard has priority
       digitalWrite(INT_, HIGH);
     }
     else

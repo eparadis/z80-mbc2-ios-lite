@@ -1,3 +1,5 @@
+#include <PS2Keyboard.h>
+
 #include <Arduino.h>
 #include "boot_payloads.h"
 #include "pins.h"
@@ -38,6 +40,8 @@ byte          clockMode;                  // Z80 clock HI/LO speed selector (0 =
 // CP/M support variables - NOT USED
 byte          autoexecFlag;               // Set to 1 if AUTOEXEC must be executed at cold boot, 0 otherwise
 
+// PS/2 keyboard interface
+PS2Keyboard keyboard;
 
 void blinkIOSled(unsigned long *timestamp)
 // Blink led IOS using a timestamp

@@ -1,3 +1,5 @@
+#include <PS2Keyboard.h>
+
 #include "pins.h"
 #include "globals.h"
 #include "boot.h"
@@ -23,6 +25,8 @@ extern word BootImageSize;
 extern const byte * const bootPh2Table[3] PROGMEM;
 extern word BootStrAddr;
 extern byte Z80IntEnFlag;
+
+extern PS2Keyboard keyboard;
 
 const byte    JP_nn        =  0xC3;     // Opcode of the Z80 instruction: JP nn
 
@@ -120,9 +124,10 @@ void setup()
   digitalWrite(CLK, LOW);
   singlePulsesResetZ80();                         // Reset the Z80 CPU using single clock pulses
 
-  // Initialize (park) MCU_RTS and MCU_CTS
-  pinMode(MCU_RTS_, INPUT_PULLUP);                // Parked (not used)
-  pinMode(MCU_CTS_, INPUT_PULLUP);
+  // Initialize PS2 Keyboard attached to "MCU_RTS and MCU_CTS"
+  keyboard.begin(MCU_RTS_, MCU_CTS_);
+  //pinMode(MCU_RTS_, INPUT_PULLUP);
+  //pinMode(MCU_CTS_, INPUT_PULLUP);
 
   // Read the Z80 CPU speed mode
   if (EEPROM.read(clockModeAddr) > 1)             // Check if it is a valid value, otherwise set it to 4MHz mode
@@ -317,6 +322,11 @@ void loop()
       writeOperation();
     else
       readOperation();
+  }
+
+  // for now, poll they keyboard buffer to see if we need to interrupt
+  if(keyboard.available() && Z80IntEnFlag) {
+    digitalWrite(INT_, LOW);
   }
 }
 
